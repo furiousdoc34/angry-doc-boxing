@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from './vendor/addons/GLTFLoader.js';
 import * as SkeletonUtils from './vendor/addons/SkeletonUtils.js';
 import { MeshoptDecoder } from './vendor/addons/meshopt_decoder.module.js';
-import { ROSTER, ARCS, ARCHETYPES, COMBOS } from './fighters.js';
+import { ROSTER, ARCS, ARCHETYPES, COMBOS } from './fighters.js?v=4';
 
 const $ = id => document.getElementById(id);
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -14,7 +14,9 @@ const svg = s => `url("data:image/svg+xml,${encodeURIComponent(s)}")`;
 const FLAG_PH = svg(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'><rect width='60' height='15' fill='#0038a8'/><rect y='15' width='60' height='15' fill='#ce1126'/><path d='M0 0L26 15L0 30Z' fill='#fff'/><circle cx='9' cy='15' r='3.5' fill='#fcd116'/></svg>`);
 const FLAG_W = svg(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'><rect width='60' height='30' fill='#222'/><circle cx='30' cy='15' r='9' fill='none' stroke='#ffd23f' stroke-width='3'/><path d='M21 15h18M30 6v18' stroke='#ffd23f' stroke-width='2'/></svg>`);
 
-const SAVE = Object.assign({ prog: 0, coins: 150, seenArc: {}, stars: {}, owned: { glove_classic: 1, outfit_coat: 1 }, glove: 'glove_classic', outfit: 'outfit_coat', muted: false }, JSON.parse(localStorage.getItem('ad_save2') || '{}'));
+const SAVE = Object.assign({ prog: 0, coins: 150, seenArc: {}, stars: {}, owned: { glove_classic: 1, outfit_trunks: 1 }, glove: 'glove_classic', outfit: 'outfit_trunks', hyperN: 0, muted: false }, JSON.parse(localStorage.getItem('ad_save2') || '{}'));
+if (!SAVE.owned.outfit_trunks || SAVE.outfit === 'outfit_coat') { SAVE.owned.outfit_trunks = 1; SAVE.outfit = 'outfit_trunks'; }
+if (!SAVE.v4) { SAVE.v4 = 1; SAVE.prog = 0; SAVE.stars = {}; SAVE.seenArc = {}; }
 const save = () => localStorage.setItem('ad_save2', JSON.stringify(SAVE));
 
 const SHOP = [
@@ -23,16 +25,18 @@ const SHOP = [
   { id: 'glove_spiked', kind: 'glove', name: 'Spiked Iron', cost: 350, glove: 0x555a60, gear: 'spiked' },
   { id: 'glove_mech', kind: 'glove', name: 'Mecha Fist', cost: 500, glove: 0x9aa4b0, gear: 'mech', glow: 0xff3d00 },
   { id: 'glove_gold', kind: 'glove', name: 'Golden Scalpel', cost: 800, glove: 0xd4af37, gear: 'mech', glow: 0xfff176 },
-  { id: 'outfit_coat', kind: 'outfit', name: "Doctor's Coat", cost: 0, top: 'coat', topColor: 0xffffff },
-  { id: 'outfit_scrubs', kind: 'outfit', name: 'Blue Scrubs', cost: 150, top: 'coat', topColor: 0x4fc3f7 },
-  { id: 'outfit_neon', kind: 'outfit', name: 'Neon Lab Coat', cost: 400, top: 'coat', topColor: 0x1a1a2e, gear: 'neon' },
-  { id: 'outfit_spiked', kind: 'outfit', name: 'Spiked Surgeon Armor', cost: 650, top: 'coat', topColor: 0x37474f, gear: 'spiked' },
+  { id: 'outfit_trunks', kind: 'outfit', name: 'Champion Trunks', cost: 0, shorts: 0xc8102e },
+  { id: 'outfit_gold', kind: 'outfit', name: 'Golden Trunks', cost: 200, shorts: 0xd4a017 },
+  { id: 'outfit_doc', kind: 'outfit', name: 'Angry Doc Costume', cost: 300, top: 'coat', topColor: 0xffffff, acc: ['mirror', 'stethoscope'] },
+  { id: 'outfit_neon', kind: 'outfit', name: 'Neon Trunks', cost: 400, shorts: 0x1a1a2e, gear: 'neon' },
+  { id: 'outfit_spiked', kind: 'outfit', name: 'Spiked Champion Armor', cost: 650, shorts: 0xc8102e, gear: 'spiked' },
 ];
 function playerLook() {
-  const g = SHOP.find(s => s.id === SAVE.glove) || SHOP[0], o = SHOP.find(s => s.id === SAVE.outfit) || SHOP[5];
-  return { build: 'normal', height: 1.0, skin: 0xe0a878, hair: 'slick', hairColor: 0x1a1a1a, top: o.top, topColor: o.topColor, shorts: 0x1a3a8a, glove: g.glove, gloveGear: g.gear, gloveGlow: g.glow, gear: o.gear, acc: ['mirror', 'stethoscope'], sig: 0x00e5ff };
+  const g = SHOP.find(s => s.id === SAVE.glove) || SHOP[0], o = SHOP.find(s => s.id === SAVE.outfit) || SHOP.find(s => s.id === 'outfit_trunks');
+  return { build: 'hero', height: 1.0, skin: 0xe8b48a, hair: 'spiky', hairColor: 0x4a2c1a, top: o.top || 'none', topColor: o.topColor ?? 0xffffff, shorts: o.shorts ?? 0xc8102e, glove: g.glove, gloveGear: g.gear, gloveGlow: g.glow, gear: o.gear, acc: ['goldbelt', ...(o.acc || [])], sig: 0xff2a1a, boots: true, bootBand: 0xd32f2f, shoe: 0x151515 };
 }
-const PLAYER = { name: 'ANGRY DOC', nick: 'The Physical Therapist', emoji: '🩺' };
+const PLAYER = { name: 'KID KAMAO', nick: 'Rising Star of the Underground', img: 'portraits/hero_focused.webp' };
+const pimg = f => `<img src="${f === PLAYER ? PLAYER.img : f.look.portrait}" alt="">`;
 
 const Audio = {
   ctx: null, crowdGain: null, master: null,
@@ -168,17 +172,19 @@ function buildRig(look) {
   // outfit painted onto the mesh via vertex colors chosen from each vertex's dominant bone
   const top0 = look.top || 'none';
   const cSkin = new THREE.Color(look.skin), cTop = new THREE.Color(look.topColor ?? 0xffffff), cSh = new THREE.Color(look.shorts ?? 0x222222), cShoe = new THREE.Color(look.shoe ?? (look.gear === 'neon' ? 0x111111 : 0x262626));
-  const longSl = ['coat', 'hoodie', 'jacket', 'barong'].includes(top0), shortSl = longSl || top0 === 'jersey';
+  const longSl = ['coat', 'hoodie', 'jacket', 'barong', 'robe', 'gi'].includes(top0), shortSl = longSl || top0 === 'jersey';
   const pickCol = n => {
     if (/spine|shoulder/.test(n)) return top0 === 'none' ? cSkin : cTop;
     if (/upper_arm/.test(n)) return shortSl ? cTop : cSkin;
     if (/forearm/.test(n)) return longSl ? cTop : cSkin;
     if (/hips|thigh/.test(n)) return cSh;
-    if (/foot|toe/.test(n)) return cShoe;
+    if (/foot|toe/.test(n) || (look.boots && /shin/.test(n))) return cShoe;
+    if (top0 === 'robe' && /thigh/.test(n)) return cTop;
     return cSkin;
   };
-  const bodyM = toon(0xffffff, { vertexColors: true });
-  const jointMat = toon(0xdddddd, { vertexColors: true });
+  const sT = look.skinType;
+  const bodyM = sT === 'metal' ? new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.75, roughness: 0.35 }) : toon(0xffffff, { vertexColors: true, ...(sT === 'fire' ? { emissive: new THREE.Color(0xff3300), emissiveIntensity: 0.6 } : sT === 'ice' ? { emissive: new THREE.Color(0x0077ff), emissiveIntensity: 0.35 } : {}) });
+  const jointMat = bodyM;
   for (const m of meshes) {
     const g = m.geometry.clone(), si = g.attributes.skinIndex, sw = g.attributes.skinWeight, n = si.count, col = new Float32Array(n * 3);
     const names = m.skeleton.bones.map(b => b.name);
@@ -254,7 +260,51 @@ function buildRig(look) {
   if (acc.has('mustache')) add(new THREE.BoxGeometry(hr * 0.75, hr * 0.12, hr * 0.12), toon(0x1a1a1a), [0, -0.28, 0.98]);
   if (acc.has('flower')) add(new THREE.IcosahedronGeometry(hr * 0.3, 0), toon(0xffffff), [0.85, 0.5, 0.3]);
   if (acc.has('earring')) add(new THREE.TorusGeometry(hr * 0.12, hr * 0.03, 6, 12), metal(0xffd700), [1.0, -0.3, 0]);
-  if (acc.has('mask')) add(new THREE.BoxGeometry(hr * 1.5, hr * 0.35, hr * 0.2), toon(0x111111), [0, 0.12, 0.9]);
+  if (acc.has('mask')) add(new THREE.BoxGeometry(hr * 1.5, hr * 0.35, hr * 0.2), toon(0x111111), [0, -0.4, 0.9]);
+  // ---- extra headgear / creature features for the 50 opponent types + hero + coach ----
+  const blkM = new THREE.MeshBasicMaterial({ color: 0x111111 }), glowM = c => new THREE.MeshBasicMaterial({ color: c });
+  const bw = look.build === 'heavy' ? 1.2 : look.build === 'slim' ? 0.92 : 1.0;
+  if (acc.has('goldbelt')) { attach(B.hips, propMesh(new THREE.TorusGeometry(0.145 * bw * R, 0.03 * R, 8, 24), 0, { mat: metal(0xd4af37), outline: false }), hips.clone().add(_a.set(0, 0.07 * R, 0)), [Math.PI / 2, 0, 0]); attach(B.hips, propMesh(new THREE.CylinderGeometry(0.05 * R, 0.05 * R, 0.02 * R, 8), 0, { mat: metal(0xffd700), outline: false }), hips.clone().add(_a.set(0, 0.07 * R, 0.15 * bw * R)), [Math.PI / 2, 0, 0]); }
+  if (look.boots) for (const s of ['L', 'R']) attach(B['shin.' + s], propMesh(new THREE.TorusGeometry(0.055 * R, 0.014 * R, 6, 14), look.bootBand ?? 0xd32f2f, { outline: false }), wp(B['shin.' + s]).lerp(wp(B['foot.' + s]), 0.45), [Math.PI / 2, 0, 0]);
+  if (acc.has('mawashi')) { attach(B.hips, propMesh(new THREE.TorusGeometry(0.17 * bw * R, 0.05 * R, 8, 20), 0xf5f5f5), hips.clone().add(_a.set(0, 0.02 * R, 0)), [Math.PI / 2, 0, 0]); }
+  if (acc.has('beads')) attach(B['spine.003'], propMesh(new THREE.TorusGeometry(0.13 * R, 0.022 * R, 6, 16), 0x5d4037, { outline: false }), neck.clone().add(_a.set(0, -0.08 * R, 0.04 * R)), [1.3, 0, 0]);
+  if (acc.has('stopwatch')) { attach(B['spine.003'], propMesh(new THREE.TorusGeometry(0.11 * R, 0.006 * R, 4, 16), 0x111111, { outline: false }), neck.clone().add(_a.set(0, -0.12 * R, 0.07 * R)), [1.2, 0, 0]); attach(B['spine.003'], propMesh(new THREE.CylinderGeometry(0.035 * R, 0.035 * R, 0.015 * R, 12), 0, { mat: metal(0xcccccc) }), chest.clone().add(_a.set(0, -0.1 * R, 0.17 * R)), [Math.PI / 2, 0, 0]); }
+  if (top === 'armor' || acc.has('rock') || top === 'fur') for (const s of ['L', 'R']) {
+    const col = top === 'armor' ? tc : top === 'fur' ? 0x6d4c41 : look.skin;
+    const pad = propMesh(top === 'armor' ? new THREE.SphereGeometry(0.1 * R, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2) : new THREE.IcosahedronGeometry(0.09 * R, 0), col, top === 'armor' ? { mat: metal(col) } : {});
+    attach(B['upper_arm.' + s], pad, wp(B['upper_arm.' + s]).add(_a.set(0, 0.035 * R, 0)));
+  }
+  if (top === 'fur') attach(B['spine.003'], propMesh(new THREE.BoxGeometry(0.42 * bw * R, 0.55 * R, 0.03 * R), 0x6d4c41), chest.clone().add(_a.set(0, -0.2 * R, -0.17 * bw * R)));
+  const hornPair = (col, len, spread, up, curve) => [-1, 1].forEach(sx => add(new THREE.ConeGeometry(hr * 0.16, hr * len, 8), toon(col), [sx * spread, up, 0], [0, 0, -sx * curve]));
+  if (acc.has('samurai')) { add(new THREE.SphereGeometry(hr * 1.14, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), metal(0x5d1010), [0, 0.12, 0]); add(new THREE.BoxGeometry(hr * 0.12, hr * 0.9, hr * 0.06), metal(0xd4af37), [-0.25, 1.3, 0.75], [0.3, 0, 0.5]); add(new THREE.BoxGeometry(hr * 0.12, hr * 0.9, hr * 0.06), metal(0xd4af37), [0.25, 1.3, 0.75], [0.3, 0, -0.5]); add(new THREE.CylinderGeometry(hr * 1.4, hr * 1.5, hr * 0.12, 12, 1, true), metal(0x3e0a0a), [0, 0.15, -0.1]); }
+  if (acc.has('horns')) { add(new THREE.SphereGeometry(hr * 1.12, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), metal(0x8d8d8d), [0, 0.15, 0]); hornPair(0xf5f0e0, 1.1, 1.05, 0.9, 1.0); }
+  if (acc.has('bullhorns')) hornPair(0xe8e0c8, 1.0, 1.0, 0.7, 1.3);
+  if (acc.has('devilhorns')) hornPair(0x1a1a1a, 0.7, 0.55, 1.05, 0.35);
+  if (acc.has('luchador') || acc.has('luchador_blue')) { const blue = acc.has('luchador_blue'); add(new THREE.SphereGeometry(hr * 1.035, 16, 12), toon(blue ? 0x1e63d6 : 0xc62828), [0, 0, 0]); [-1, 1].forEach(sx => add(new THREE.TorusGeometry(hr * 0.3, hr * 0.06, 6, 14), toon(blue ? 0xffd600 : 0xffffff), [sx * 0.37, 0.1, 0.92])); add(new THREE.BoxGeometry(hr * 0.12, hr * 0.9, hr * 0.05), toon(blue ? 0xffd600 : 0xffffff), [0, 0.6, 0.85], [-0.6, 0, 0]); }
+  if (acc.has('hood') || acc.has('ninja')) add(new THREE.SphereGeometry(hr * 1.22, 16, 12, Math.PI * 0.15, Math.PI * 1.7, 0, Math.PI * 0.8), toon(acc.has('ninja') ? 0x151515 : (look.topColor ?? 0x333333), { side: THREE.DoubleSide }), [0, 0.1, -0.05], [0, Math.PI, 0]);
+  if (acc.has('ninja')) add(new THREE.BoxGeometry(hr * 1.6, hr * 0.7, hr * 0.5), toon(0x151515), [0, -0.45, 0.75]);
+  if (acc.has('pirate')) { add(new THREE.CylinderGeometry(hr * 1.6, hr * 1.6, hr * 0.08, 16), toon(0x151515), [0, 0.75, 0]); add(new THREE.SphereGeometry(hr * 1.05, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), toon(0x151515), [0, 0.6, 0]); add(new THREE.SphereGeometry(hr * 0.15, 8, 6), toon(0xffffff), [0, 1.0, 0.95]); }
+  if (acc.has('helmet')) { add(new THREE.SphereGeometry(hr * 1.16, 16, 12), metal(look.topColor ?? 0x90a4ae), [0, 0.05, 0]); add(new THREE.BoxGeometry(hr * 1.3, hr * 0.12, hr * 0.2), blkM, [0, 0.12, 1.08]); }
+  if (acc.has('spartan') || acc.has('gladiator')) { add(new THREE.SphereGeometry(hr * 1.14, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), metal(acc.has('spartan') ? 0xd4af37 : 0xa1887f), [0, 0.05, 0]); add(new THREE.BoxGeometry(hr * 0.3, hr * (acc.has('spartan') ? 0.9 : 0.6), hr * 2.0), toon(0xd50000), [0, 1.35, -0.1]); }
+  if (acc.has('turban')) { for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(hr * (1.0 - k * 0.12), hr * 0.2, 6, 18), toon(0xd7b98a), [0, 0.55 + k * 0.22, -0.05], [Math.PI / 2 - 0.2, 0, 0]); add(new THREE.BoxGeometry(hr * 1.6, hr * 0.6, hr * 0.4), toon(0xd7b98a), [0, -0.45, 0.8]); }
+  if (acc.has('fedora')) { add(new THREE.CylinderGeometry(hr * 1.5, hr * 1.5, hr * 0.06, 16), toon(0x212121), [0, 0.78, 0]); add(new THREE.CylinderGeometry(hr * 0.85, hr * 1.0, hr * 0.6, 14), toon(0x212121), [0, 1.08, 0]); add(new THREE.CylinderGeometry(hr * 1.0, hr * 1.0, hr * 0.12, 14), toon(0x8b1a1a), [0, 0.86, 0]); }
+  if (acc.has('cap_yellow')) { add(new THREE.SphereGeometry(hr * 1.1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), toon(0xffd600), null, [-0.15, 0, 0]); add(new THREE.CylinderGeometry(hr * 0.75, hr * 0.75, hr * 0.06, 12, 1, false, 0, Math.PI), toon(0xffd600), [0, 0.5, 0.6], [0, -Math.PI / 2, 0]); add(new THREE.ConeGeometry(hr * 0.3, hr * 0.45, 3), blkM, [0, 0.85, 0.85], [0.5, 0, Math.PI / 2]); }
+  if (acc.has('skullmask')) { add(new THREE.SphereGeometry(hr * 1.06, 14, 10, -Math.PI * 0.5, Math.PI, 0, Math.PI), toon(0xece4d0), [0, 0, 0.05], [0, 0, 0]); [-1, 1].forEach(sx => add(new THREE.SphereGeometry(hr * 0.22, 8, 6), blkM, [sx * 0.36, 0.1, 1.0])); hornPair(0xece4d0, 0.6, 0.6, 0.95, 0.4); }
+  if (acc.has('skull')) { [-1, 1].forEach(sx => add(new THREE.SphereGeometry(hr * 0.27, 8, 6), blkM, [sx * 0.37, 0.1, 0.88])); add(new THREE.ConeGeometry(hr * 0.12, hr * 0.2, 3), blkM, [0, -0.15, 1.0], [Math.PI, 0, 0]); add(new THREE.BoxGeometry(hr * 0.7, hr * 0.12, hr * 0.1), toon(0xece4d0), [0, -0.45, 0.92]); }
+  if (acc.has('zombie')) { add(new THREE.SphereGeometry(hr * 0.3, 8, 6), toon(0xf0f0d0), [0.37, 0.1, 0.85]); add(new THREE.BoxGeometry(hr * 0.06, hr * 0.6, hr * 0.06), blkM, [-0.4, 0.55, 0.85], [0, 0, 0.3]); }
+  if (acc.has('bandage')) { for (let k = 0; k < 4; k++) add(new THREE.TorusGeometry(hr * 1.02, hr * 0.07, 4, 18), toon(0xc8b68e), [0, -0.5 + k * 0.38, 0], [Math.PI / 2 + (k % 2 ? 0.25 : -0.25), 0, 0]); }
+  if (acc.has('tusks')) [-1, 1].forEach(sx => add(new THREE.ConeGeometry(hr * 0.1, hr * 0.42, 6), toon(0xfff8e1), [sx * 0.28, -0.4, 0.95], [0.2, 0, sx * 0.2]));
+  if (acc.has('goblin')) [-1, 1].forEach(sx => add(new THREE.ConeGeometry(hr * 0.22, hr * 1.1, 6), toon(look.skin), [sx * 1.25, 0.15, 0], [0, 0, sx * 1.35]));
+  if (acc.has('snout') || acc.has('wolf')) { add(new THREE.BoxGeometry(hr * 0.75, hr * 0.5, hr * 0.7), toon(new THREE.Color(look.skin).multiplyScalar(0.92).getHex()), [0, -0.3, 1.1]); add(new THREE.SphereGeometry(hr * 0.12, 6, 5), blkM, [0, -0.15, 1.45]); }
+  if (acc.has('wolf')) [-1, 1].forEach(sx => add(new THREE.ConeGeometry(hr * 0.25, hr * 0.6, 4), toon(look.skin), [sx * 0.6, 1.0, -0.1], [0, 0, -sx * 0.3]));
+  if (acc.has('spikes')) for (let k = 0; k < 4; k++) add(new THREE.ConeGeometry(hr * 0.13, hr * 0.5, 5), toon(new THREE.Color(look.skin).multiplyScalar(0.7).getHex()), [0, 1.0 - k * 0.15, -0.3 - k * 0.32], [-0.6 - k * 0.3, 0, 0]);
+  if (acc.has('rock')) for (let k = 0; k < 4; k++) add(new THREE.IcosahedronGeometry(hr * 0.28, 0), toon(new THREE.Color(look.skin).multiplyScalar(0.8).getHex()), [Math.cos(k * 1.7) * 0.8, 0.55 + (k % 2) * 0.3, Math.sin(k * 1.7) * 0.6 - 0.2]);
+  if (acc.has('warpaint')) add(new THREE.BoxGeometry(hr * 0.9, hr * 0.5, hr * 0.06), toon(0x1565c0), [-0.38, 0.1, 0.94]);
+  if (acc.has('visor')) add(new THREE.BoxGeometry(hr * 1.5, hr * 0.22, hr * 0.15), glowM(look.sig || 0xff1744), [0, 0.1, 1.0]);
+  if (acc.has('antenna')) [-1, 1].forEach(sx => { add(new THREE.CylinderGeometry(hr * 0.03, hr * 0.03, hr * 0.7, 5), metal(0x888888), [sx * 0.6, 1.1, 0]); add(new THREE.SphereGeometry(hr * 0.1, 6, 5), glowM(0x00b0ff), [sx * 0.6, 1.45, 0]); });
+  if (acc.has('alien')) [-1, 1].forEach(sx => add(new THREE.SphereGeometry(hr * 0.36, 10, 8), blkM, [sx * 0.4, 0.15, 0.82], [0, 0, sx * 0.5], [1.4, 0.8, 0.5]));
+  if (acc.has('glow_eyes')) [-1, 1].forEach(sx => add(new THREE.SphereGeometry(hr * 0.16, 8, 6), glowM(look.sig || 0xff1744), [sx * 0.37, 0.1, 0.98]));
+
   if (acc.has('stethoscope')) { attach(B['spine.003'], propMesh(new THREE.TorusGeometry(0.12 * R, 0.012 * R, 6, 20, Math.PI * 1.3), 0x222222, { outline: false }), neck.clone().add(_a.set(0, -0.12 * R, 0.08 * R)), [1.2, 0, Math.PI * 1.15]); attach(B['spine.003'], propMesh(new THREE.CylinderGeometry(0.03 * R, 0.03 * R, 0.015 * R, 12), 0xc0c0c0, { outline: false }), chest.clone().add(_a.set(0.08 * R, -0.12 * R, 0.21 * build * R)), [Math.PI / 2, 0, 0]); }
   if (acc.has('chain')) attach(B['spine.003'], propMesh(new THREE.TorusGeometry(0.12 * R, 0.015 * R, 6, 20), 0, { mat: metal(0xffd700), outline: false }), neck.clone().add(_a.set(0, -0.1 * R, 0.05 * R)), [1.3, 0, 0]);
   if (acc.has('towel')) attach(B['spine.003'], propMesh(new THREE.TorusGeometry(0.14 * R, 0.04 * R, 6, 16), 0xffffff), neck.clone().add(_a.set(0, -0.04 * R, 0)), [Math.PI / 2, 0, 0]);
@@ -278,8 +328,8 @@ function buildRig(look) {
     attach(B['hand.' + s], g, hp.clone().add(_a.set(sx * 0.06 * R, 0, 0.02 * R)));
     gloves[s] = g;
   }
-  B.head.scale.setScalar(1.7); B.neck.scale.setScalar(1.05); B['hand.L'].scale.setScalar(1.25); B['hand.R'].scale.setScalar(1.25);
-  if (look.build === 'heavy') { B['spine.001'].scale.set(1.25, 1, 1.25); B['spine.002'].scale.set(1.0, 1, 1.0); } else if (look.build === 'slim') B['spine.002'].scale.set(0.92, 1, 0.92);
+  B.head.scale.setScalar((look.acc || []).includes('alien') ? 1.95 : 1.7); B.neck.scale.setScalar(1.05); B['hand.L'].scale.setScalar(1.25); B['hand.R'].scale.setScalar(1.25);
+  if (look.build === 'hero') { B['spine.002'].scale.set(1.1, 1, 1.05); B['spine.003'].scale.set(1.08, 1, 1.0); B['upper_arm.L'].scale.set(1.15, 1, 1.15); B['upper_arm.R'].scale.set(1.15, 1, 1.15); } else if (look.build === 'heavy') { B['spine.001'].scale.set(1.25, 1, 1.25); B['spine.002'].scale.set(1.0, 1, 1.0); } else if (look.build === 'slim') B['spine.002'].scale.set(0.92, 1, 0.92);
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.01; root.add(blob);
   const trails = {};
   for (const s of ['L', 'R']) { trails[s] = []; for (let k = 0; k < 6; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: gGlow || look.sig || 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); sp.scale.setScalar(0.35 - k * 0.04); scene.add(sp); trails[s].push(sp); } }
@@ -350,7 +400,7 @@ class Fighter {
     if (this.pose) { const P = this.pose(time); if (P.L) L = P.L; if (P.R) R = P.R; }
     this.offX = lerp(this.offX, this.dodge * 0.6, Math.min(1, dt * 18));
     this.hitBack = lerp(this.hitBack, 0, Math.min(1, dt * 8));
-    u.body.position.set(this.offX, this.down ? 0 : bob, -this.hitBack - this.retreat);
+    this.lift = lerp(this.lift || 0, 0, Math.min(1, dt * 3)); u.body.position.set(this.offX, (this.down ? 0 : bob) + this.lift, -this.hitBack - this.retreat);
     const lean = this.down ? 0 : 1;
     u.body.rotation.z = lerp(u.body.rotation.z, (-this.dodge * 0.3 + leanX * 0.25) * lean, Math.min(1, dt * 15));
     u.body.rotation.x = lerp(u.body.rotation.x, (leanZ - this.hitBack * 0.4) * lean, Math.min(1, dt * 10));
@@ -396,16 +446,16 @@ function startFight(def) {
   player = new Fighter(null, true); player.mesh.position.set(-0.6, 0.25, 0.85); player.mesh.rotation.y = Math.PI - 0.32;
   enemy = new Fighter(def, false); enemy.mesh.position.set(0, 0.25, -0.9);
   round = 1; cine = null;
-  $('pName').textContent = PLAYER.name; $('pFlag').style.backgroundImage = FLAG_PH; $('pAv').textContent = PLAYER.emoji; $('pAv').style.background = '#c22';
-  const intl = def.arc >= 7 && !/^(Kuya|Ate|Mang|Aling|Tito|Tita|Lolo|Kid|Big|Little|Señor|Bossing|Pare|Mare|Doc|Sir|Coach|Idol|Master|Batang)\b/.test(def.name) && !def.boss;
-  $('eName').textContent = def.name.toUpperCase(); $('eFlag').style.backgroundImage = intl ? FLAG_W : FLAG_PH; $('eAv').textContent = def.look.emoji; $('eAv').style.background = hex(def.look.topColor ?? 0x444444);
+  $('pName').textContent = PLAYER.name; $('pFlag').style.backgroundImage = FLAG_PH; $('pAv').innerHTML = pimg(PLAYER); $('pAv').style.background = '#c22';
+  const intl = def.id >= 0 && (def.type || 0) > 10;
+  $('eName').textContent = def.name.toUpperCase(); $('eFlag').style.backgroundImage = intl ? FLAG_W : FLAG_PH; $('eAv').innerHTML = pimg(def); $('eAv').style.background = hex(def.look.topColor ?? 0x444444);
   $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); hideHud(false);
   beginRound();
 }
 function beginRound() {
-  state = 'intro'; timer = ROUND_TIME; $('roundT').textContent = `ROUND ${round}`;
+  state = 'intro'; timer = ROUND_TIME; const rl = tut ? 'TUTORIAL' : `ROUND ${round}`; $('roundT').textContent = rl;
   player.reset(false); enemy.reset(false); ai = { s: 'idle', t: 1.2 }; comboQ = [];
-  slam(`ROUND ${round}`, 'cyan', 1.1); setTimeout(() => { if (state === 'intro') { slam('FIGHT!', 'gold', 0.7); Audio.bell(1); Audio.cheer(0.3); state = 'fight'; } }, 1200);
+  slam(rl, 'cyan', 1.1); setTimeout(() => { if (state === 'intro') { slam('FIGHT!', 'gold', 0.7); Audio.bell(1); Audio.cheer(0.3); state = 'fight'; } }, 1200);
 }
 let bannerTO;
 function slam(txt, cls, dur) { const b = $('banner'); b.className = ''; void b.offsetWidth; b.textContent = txt; b.className = 'show ' + (cls || ''); clearTimeout(bannerTO); bannerTO = setTimeout(() => b.classList.remove('show'), dur * 1000); }
@@ -454,7 +504,7 @@ function resolvePlayerHit(a) {
   const heavy = kind || counter || type !== 'jab'; hitReact(e, type, heavy);
   dmgNum(e, dmg, kind); burst(e, kind || counter ? 1.4 : type === 'jab' ? 0.7 : 1); sweat(e, heavy ? 10 : 4); if (heavy) sparks(e);
   Audio.thud(heavy ? 1.2 : 0.7); if (heavy) { shake = Math.max(shake, 0.18); hitstop = 0.06; camPunch = Math.max(camPunch, kind ? 1 : 0.6); Audio.cheer(0.25); crowdHype = 1; }
-  if (e.hp <= 0) knockdown(e);
+  if (tut) { tutEvent('hit', type, counter); if (e.hp < e.maxHp * 0.3) e.hp = e.maxHp; } else if (e.hp <= 0) knockdown(e);
 }
 function enemyAttack(type, windMul = 1, mult = 1) {
   const A = AIP(), tier = cur.id / 99;
@@ -466,17 +516,17 @@ function resolveEnemyHit(a) {
   const p = player; enemy.squash[gloveOf(a.type)] = 1;
   if (p.dodge !== 0) {
     const goodDir = a.type === 'hookL' ? p.dodge === 1 : a.type === 'hookR' ? p.dodge === -1 : true;
-    if (goodDir || Math.random() < 0.5) { callout('DODGE!', 'b', 0.45); p.hyper = clamp(p.hyper + 6, 0, 100); enemy.st -= 8; return; }
+    if (goodDir || Math.random() < 0.5) { callout('DODGE!', 'b', 0.45); tutEvent('dodge'); p.hyper = clamp(p.hyper + 6, 0, 100); enemy.st -= 8; return; }
   }
   let dmg = a.p.d * rnd(0.9, 1.1);
-  if (p.blocking) { const d = Math.max(1, dmg * 0.2); p.hp -= d; p.st = Math.max(0, p.st - 8); dmgNum(p, d, 'blk'); Audio.thud(0.5, true); shake = 0.06; if (p.st <= 0) { p.blocking = false; p.stun = 0.6; callout('GUARD CRUSHED', 'y', 0.5); } return; }
+  if (p.blocking) { const d = Math.max(1, dmg * 0.2); p.hp -= d; p.st = Math.max(0, p.st - 8); dmgNum(p, d, 'blk'); Audio.thud(0.5, true); shake = 0.06; tutEvent('block'); if (p.st <= 0) { p.blocking = false; p.stun = 0.6; callout('GUARD CRUSHED', 'y', 0.5); } return; }
   let kind = ''; if (Math.random() < 0.1) { dmg *= 1.5; kind = 'crit'; }
   if (p.action && p.t < p.action.p.w) { dmg *= 1.4; p.action = null; callout('COUNTERED!', 'y', 0.55); }
   p.hp -= dmg; enemy.dealt += dmg; enemy.landed++; p.hyper = clamp(p.hyper + dmg * 0.3, 0, 100); enemy.hyper = clamp(enemy.hyper + dmg * 0.5, 0, 100);
   p.flash = 0.12; p.hitBack = 0.22; p.stun = 0.25; p.action = null; hitReact(p, a.type, true);
   if (a.type === 'upper' && Math.random() < 0.5) { p.speedDown = 5; callout('SPEED DOWN', 'b', 0.6); }
   dmgNum(p, dmg, kind); burst(p, 0.9); sweat(p, 8); Audio.thud(1); shake = Math.max(shake, 0.25); camPunch = 0.5; flashScreen();
-  if (p.hp <= 0) knockdown(p);
+  if (tut) { tutEvent('hurt'); if (p.hp < p.maxHp * 0.3) p.hp = p.maxHp; } else if (p.hp <= 0) knockdown(p);
 }
 function knockdown(f) {
   f.hp = 0; f.down = true; f.action = null; f.blocking = false; comboQ = []; state = 'down'; f.knockdowns++;
@@ -507,9 +557,9 @@ function endRound() {
 function showBreak() {
   const b = $('break'); b.classList.remove('hidden');
   const eCol = hex(cur.look.topColor ?? 0x444444);
-  b.innerHTML = `<div class="btitle">BREAK TIME</div><div class="stools"><div class="stool"><div class="sav" style="background:#c22">${PLAYER.emoji}</div><div class="seat"></div><b>ANGRY DOC</b><small id="bPh">HP ${fmt(player.hp * HPX)}</small></div>
-   <div class="cd" id="bCd">5</div><div class="stool"><div class="sav" style="background:${eCol}">${cur.look.emoji}</div><div class="seat"></div><b>${cur.name.toUpperCase()}</b><small>HP ${fmt(enemy.hp * HPX)}</small></div></div>
-   <div class="bbtns"><button class="btn bb" id="bHM">⚡ HYPER MAX<br><small>60 🪙</small></button><button class="btn bb" id="bRH">✚ RECOVER HP & CURE INJURY<br><small>90 🪙</small></button></div><div class="coins">🪙 <span id="bCoins">${SAVE.coins}</span></div>`;
+  b.innerHTML = `<div class="btitle">BREAK TIME</div><div class="stools"><div class="stool"><div class="sav" style="background:#c22">${pimg(PLAYER)}</div><div class="seat"></div><b>KID KAMAO</b><small id="bPh">HP ${fmt(player.hp * HPX)}</small></div>
+   <div class="cd" id="bCd">5</div><div class="stool"><div class="sav" style="background:${eCol}">${pimg(cur)}</div><div class="seat"></div><b>${cur.name.toUpperCase()}</b><small>HP ${fmt(enemy.hp * HPX)}</small></div></div>
+   <div class="bbtns"><button class="btn bb" id="bHM">⚡ HYPER MAX<br><small>60 🪙</small></button><button class="btn bb" id="bRH">✚ RECOVER HP & CURE INJURY<br><small>90 🪙</small></button></div><div class="coins">🪙 <span id="bCoins">${SAVE.coins}</span></div><div class="bcoach"><img src="portraits/coach_corner.webp"><div><b>COACH ANGRY DOC</b><br>“${coachTip()}”</div></div>`;
   const buy = (cost, fn, id) => { if (SAVE.coins < cost) { $(id).classList.add('no'); return; } SAVE.coins -= cost; save(); $('bCoins').textContent = SAVE.coins; $(id).disabled = true; fn(); };
   $('bHM').onclick = () => buy(60, () => { player.hyper = 100; Audio.charge(); flashScreen('rgba(0,229,255,.35)', 400); }, 'bHM');
   $('bRH').onclick = () => buy(90, () => { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.3); player.speedDown = 0; Audio.heal(); b.classList.add('heal'); emit(player.headWorld().add(_a.set(0, -0.8, 0)), 30, 0xffe23a, 1.5, 0.12, 1.2, 1.5); $('bPh').textContent = 'HP ' + fmt(player.hp * HPX); }, 'bRH');
@@ -537,7 +587,7 @@ function startCine(att, def, spec) {
   cine = { t: 0, att, def, spec, phase: -1, dealt: false }; state = 'cine';
   const css = hex(spec.color);
   cineEl.classList.remove('hidden'); cineEl.style.setProperty('--sig', css); cineBg.style.setProperty('--sig', css);
-  cineEl.innerHTML = `<div class="cfade"></div><div class="cname"><small>${att.isPlayer ? 'HYPER' : 'RAGE'} · ${att.isPlayer ? 'ANGRY DOC' : cur.name.toUpperCase()}</small>${spec.name}</div><div class="ctap">▶▶ Tap to fast-forward</div>`;
+  cineEl.innerHTML = `<img class="cface" src="${spec.face}"><div class="cfade"></div><div class="cname"><small>${att.isPlayer ? 'HYPER' : 'RAGE'} · ${att.isPlayer ? PLAYER.name : cur.name.toUpperCase()}</small>${spec.name}</div><div class="ctap">▶▶ Tap to fast-forward</div>`;
   Audio.charge(); hideHud(true);
 }
 cineEl.addEventListener('pointerdown', () => { if (cine && cine.t < 2.7) cine.t = 2.7; });
@@ -552,6 +602,7 @@ function updateCine(dt) {
   const head = a.headWorld(), fwd = V().set(0, 0, 1).applyQuaternion(a.mesh.quaternion), right = V().set(1, 0, 0).applyQuaternion(a.mesh.quaternion);
   const col = new THREE.Color(c.spec.color);
   if (c.phase >= 1 && c.phase <= 3) drawCineBg(c.phase, t, hex(c.spec.color));
+  cineFX(c, t);
   if (t < 0.35) setPhase(0);
   else if (t < 1.3) { setPhase(1); a.yell = 2.5; a.pose = () => ({ L: [-0.32, 1.55, 0.25], R: [0.32, 1.55, 0.25] }); camera.position.copy(head).addScaledVector(fwd, 0.95 - (t - 0.35) * 0.3).addScaledVector(right, 0.1); camera.lookAt(head); camera.fov = 40; }
   else if (t < 1.9) { setPhase(2); const k = Math.abs(Math.sin((t - 1.3) * 10)); a.pose = () => ({ L: [-0.03 - k * 0.12, 1.85, 0.6], R: [0.03 + k * 0.12, 1.85, 0.6] }); const gp = u.body.localToWorld(V().set(0, 1.85, 0.6)); camera.position.copy(gp).addScaledVector(fwd, 1.6).addScaledVector(right, 0.35).add(_a.set(0, 0.12, 0)); camera.lookAt(gp); camera.fov = 45; u.gMats.forEach(m => m.emissive.copy(col).multiplyScalar(k * 0.6)); }
@@ -565,25 +616,42 @@ function updateCine(dt) {
       shake = 0.9; camPunch = 1.6; hitstop = 0.15; Audio.boom(); Audio.cheer(0.9); crowdHype = 1.5; flashScreen('rgba(255,255,255,.95)', 260);
       setTimeout(() => { const [x, y] = toScreen(d.headWorld()); spawn('dmg mega', fmt(dmg * HPX), x, y - 20, 1600); spawn('bolt', '', x, y, 600); burst(d, 3, hex(c.spec.color)); }, 30);
       sparks(d, c.spec.color, 30); sweat(d, 20);
+      if (c.spec.kind === 'barrage') for (let k = 0; k < 6; k++) setTimeout(() => { if (!d.mesh.visible) return; dmgNum(d, dmg / 8, k % 2 ? 'crit' : ''); Audio.thud(0.9); sparks(d, 0xff2a1a, 4); }, 60 + k * 90);
+      if (c.spec.kind === 'smash') { shake = 1.3; emit(d.mesh.position.clone().add(_e.set(0, 0.3, 0)), 30, 0x8d6e63, 4, 0.16, 0.8, -9); }
     }
     u.gMats.forEach(m => m.emissive.copy(col).multiplyScalar(Math.max(0, 1 - (t - 2.7) * 2)));
     const p = a.mesh.position.clone().lerp(d.mesh.position, 0.5).add(_a.set(0, 1.9, 0)); camera.position.copy(p).addScaledVector(right, 2.3).addScaledVector(fwd, 0.3).add(_b.set(0, 0.3, 0)); camera.lookAt(p); camera.fov = baseFov + 6;
   } else {
     cineEl.classList.add('hidden'); cineBg.classList.remove('on'); arena.visible = true; scene.background = BG; scene.fog.far = 20; d.mesh.visible = true; a.pose = null; u.gMats.forEach(m => m.emissive.set(0));
-    camera.fov = baseFov; cine = null; state = 'fight'; hideHud(false); ai = { s: 'retreat', t: 0.8 }; camera.updateProjectionMatrix(); if (d.hp <= 0) knockdown(d);
+    camera.fov = baseFov; cine = null; state = 'fight'; hideHud(false); ai = { s: 'retreat', t: 0.8 }; camera.updateProjectionMatrix(); if (tut) { if (d.hp < d.maxHp * 0.3) d.hp = d.maxHp; tutEvent('cine'); } else if (d.hp <= 0) knockdown(d);
     return;
   }
   camera.updateProjectionMatrix();
 }
+const HERO_SPECIALS = [
+  { kind: 'flame', name: 'KAMAO FLAME FIST' }, { kind: 'barrage', name: 'RAPID KAMAO BARRAGE' }, { kind: 'rising', name: 'RISING DRAGON UPPERCUT' }, { kind: 'smash', name: 'EARTH-SPLITTER SMASH' },
+];
+function cineFX(c, t) {
+  const a = c.att, u = a.mesh.userData;
+  if (a.isPlayer && c.phase >= 1 && c.phase <= 3) emit(a.mesh.position.clone().add(_e.set(rnd(-0.45, 0.45), rnd(0.3, 2.3), rnd(-0.35, 0.35))), 2, Math.random() < 0.5 ? 0xff2a1a : 0xffb000, 1.0, 0.2, 0.6, 3);
+  if (c.phase !== 4 || !c.spec.kind) return;
+  const k = c.spec.kind, tt = t - 2.7;
+  if (k === 'flame') { emit(u.gloves.L.getWorldPosition(V()), 3, Math.random() < 0.5 ? 0xff3d00 : 0xffd000, 2, 0.22, 0.5, 2); emit(u.gloves.R.getWorldPosition(V()), 1, 0xff3d00, 1.5, 0.18, 0.4, 2); }
+  if (k === 'barrage') a.pose = tt < 0.6 ? (tm => Math.sin(tm * 55) > 0 ? { R: [0.05, 1.9, 1.15], L: [-0.2, 1.6, 0.4] } : { L: [-0.05, 1.9, 1.15], R: [0.2, 1.6, 0.4] }) : null;
+  if (k === 'rising') { a.pose = tt < 0.5 ? () => ({ R: [0.1, 2.7, 0.7], L: [-0.2, 1.6, 0.4] }) : null; if (tt < 0.45) c.def.lift = tt * 1.6; if (tt < 0.3) emit(c.def.headWorld(), 2, 0xff2a1a, 2.5, 0.2, 0.4, 4); }
+  if (k === 'smash') a.pose = tt < 0.5 ? () => ({ R: [0.12, 0.9, 0.75], L: [-0.12, 0.9, 0.75] }) : null;
+}
 function startHyper() {
   if (state !== 'fight' || player.hyper < 100 || player.down || cine) return; player.hyper = 0;
-  startCine(player, enemy, { name: "DOCTOR'S ORDERS", color: 0x00e5ff, dmg: 34 + cur.arc * 6 });
+  const sp = HERO_SPECIALS[(SAVE.hyperN = (SAVE.hyperN || 0) + 1) % HERO_SPECIALS.length]; save();
+  startCine(player, enemy, { ...sp, color: 0xff2a1a, face: 'portraits/hero_shout.webp', dmg: 34 + Math.max(0, cur.arc) * 6 });
 }
 
 // ---------- AI ----------
 function updateAI(dt) {
   const e = enemy; if (e.down || cine) return;
-  if (e.hyper >= 100 && !e.action && player.stun <= 0) { e.hyper = 0; startCine(e, player, { name: cur.rage.toUpperCase(), color: cur.look.sig ?? 0xff3d00, dmg: 14 + cur.stats.power * 16 }); return; }
+  if (tut) return tutAI(dt);
+  if (e.hyper >= 100 && !e.action && player.stun <= 0) { e.hyper = 0; startCine(e, player, { name: cur.rage.toUpperCase(), color: cur.look.sig ?? 0xff3d00, face: cur.look.portrait, dmg: 14 + cur.stats.power * 16 }); return; }
   if (e.action) return;
   const A = AIP(); ai.t -= dt;
   e.retreat = lerp(e.retreat || 0, ai.s === 'retreat' ? 0.5 : 0, Math.min(1, dt * 4));
@@ -631,7 +699,7 @@ function toggleMute() { Audio.setMute(!SAVE.muted); $('muteBtn').textContent = S
 $('muteBtn').onclick = toggleMute; $('muteBtn').textContent = SAVE.muted ? '🔇' : '🔊';
 function togglePause() {
   if (!['fight', 'intro'].includes(state) && !paused) return; paused = !paused;
-  if (paused) showMenu(`<h1>PAUSED</h1><br><button class="btn" id="mRes">RESUME</button><button class="btn sec" id="mQuit">QUIT TO CHAPTER</button>`, { mRes: togglePause, mQuit: () => { paused = false; showArc(cur.arc); } });
+  if (paused) showMenu(`<h1>PAUSED</h1><br><button class="btn" id="mRes">RESUME</button><button class="btn sec" id="mQuit">${tut ? 'QUIT TUTORIAL' : 'QUIT TO CHAPTER'}</button><button class="btn sec qbtn" id="mCheat">?</button>`, { mRes: togglePause, mCheat: () => showCheat(() => { paused = false; togglePause(); }), mQuit: () => { paused = false; if (tut) finishTutorial(false); else showArc(cur.arc); } });
   else $('menu').classList.add('hidden');
 }
 
@@ -642,10 +710,15 @@ function toMenu() { $('hud').classList.add('hidden'); $('break').classList.add('
 const avBg = f => hex(f.look.topColor ?? 0x444444);
 function showTitle() {
   toMenu();
-  showMenu(`${coinBar()}<h1>ANGRY DOC</h1><h2>UNDERGROUND KNOCKOUT</h2><p>100 fighters. 10 chapters. One physical therapist with a mean right hand.</p><br>
-  <div><button class="btn" id="mStory">STORY MODE</button></div><div><button class="btn sec" id="mGal">FIGHTERS</button><button class="btn sec" id="mShop">GEAR SHOP</button><button class="btn sec" id="mHow">HOW TO PLAY</button></div>
-  <p style="font-size:11px;opacity:.6">Progress: ${SAVE.prog}/${ROSTER.length} fighters defeated</p>`, { mStory: showStory, mGal: showGallery, mShop: showShop, mHow: showHow });
+  showMenu(`${coinBar()}<div class="tlogo"><img src="portraits/hero_focused.webp"><div><h1>KID KAMAO</h1><h2>UNDERGROUND KNOCKOUT</h2></div><img src="portraits/coach_talk.webp"></div><p>50 opponents. 100 fights. One kid, one coach — Coach Angry Doc.</p>
+  <div><button class="btn" id="mStory">STORY MODE</button></div><div><button class="btn sec" id="mTut">🎓 TUTORIAL / HOW TO PLAY</button><button class="btn sec" id="mGal">FIGHTERS</button><button class="btn sec" id="mShop">GEAR SHOP</button><button class="btn sec" id="mHow">CONTROLS</button></div>
+  <p style="font-size:11px;opacity:.6">Progress: ${SAVE.prog}/${ROSTER.length} fights won${SAVE.tutDone ? ' · Tutorial ✔' : ''}</p>`, { mStory: showStory, mGal: showGallery, mShop: showShop, mHow: () => showCheat(showTitle), mTut: startTutorial });
 }
+function offerTutorial() {
+  showMenu(`<div class="chapter"><img class="cface big" src="portraits/coach_talk.webp"><small>COACH ANGRY DOC</small><h1>Tutorial muna?</h1><p class="quote">“Bago ka sumabak, warm-up muna tayo. Kahit PT ako, ayokong ikaw ang pasyente ko mamaya.”</p><br><button class="btn" id="mY">OO, TARA!</button><button class="btn sec" id="mN">MAMAYA NA</button></div>`, { mY: startTutorial, mN: () => { SAVE.tutOffered = 1; save(); showTitle(); } });
+}
+const COACH_TIPS = ['Uppercut breaks guard. Parang hard reset ng tuhod — masakit pero effective.', 'Watch the orange glow. Counter = bonus damage. Libre na yan, kunin mo!', 'Stamina mo, parang pasyente ko after leg day — pagpahingahin mo.', 'Block muna pag combo siya. Hindi ka si Superman, Kid.', 'Hydrate! Tubig, hindi milk tea.', 'Dodge away from the hook. Kaliwa ang hook, kanan ka. Basic biomechanics yan!', 'Puno na ba HYPER mo? Ilabas mo na, wag mong i-ipon parang ER bill.'];
+function coachTip() { return COACH_TIPS[Math.floor(Math.random() * COACH_TIPS.length)]; }
 function showHow() {
   showMenu(`<h1>HOW TO PLAY</h1><p><b>Touch:</b> TAP = Jab · SWIPE ←/→ = Hook · SWIPE ↑ = Uppercut · ◀ ▶ = Dodge · hold 🛡 = Block · HYPER (left side) when full.</p>
   <p><b>Keys:</b> J jab · K / L hooks · I uppercut · A / D dodge · hold S block · SPACE hyper / fast-forward · P pause · M mute.</p>
@@ -656,33 +729,34 @@ function showStory() {
   toMenu();
   const cards = ARCS.map((a, i) => { const open = SAVE.prog >= i * 10, done = clamp(SAVE.prog - i * 10, 0, 10), boss = ROSTER[i * 10 + 9];
     return `<div class="card arc ${open ? '' : 'locked'}" id="arc${i}"><div class="big">${open ? (done >= 10 ? '🏆' : '🥊') : '🔒'}</div><b>CH.${i + 1} ${a.name}</b><small>${open ? done + '/10 · Boss: ' + boss.name : 'Defeat the previous boss'}</small></div>`; }).join('');
-  const h = { mBack: showTitle }; ARCS.forEach((_, i) => { if (SAVE.prog >= i * 10) h['arc' + i] = () => SAVE.seenArc[i] ? showArc(i) : showChapter(i); });
-  showMenu(`${coinBar()}<h1 style="font-size:36px">STORY MODE</h1><div class="ladder">${cards}</div><br><button class="btn sec" id="mBack">BACK</button>`, h);
+  const h = { mBack: showTitle, arcT: startTutorial }; ARCS.forEach((_, i) => { if (SAVE.prog >= i * 10) h['arc' + i] = () => SAVE.seenArc[i] ? showArc(i) : showChapter(i); });
+  const t0 = `<div class="card arc" id="arcT"><div class="big"><img src="portraits/coach_neutral.webp" style="width:54px;border-radius:50%"></div><b>CH.0 Tutorial</b><small>${SAVE.tutDone ? 'Done ✔ · replay' : 'Learn the controls · +150 🪙'}</small></div>`;
+  showMenu(`${coinBar()}<h1 style="font-size:36px">STORY MODE</h1><h2>Part 1: Ch.1–5 · Part 2 REMATCH: Ch.6–10</h2><div class="ladder">${t0}${cards}</div><br><button class="btn sec" id="mBack">BACK</button>`, h);
 }
 function showChapter(i) {
   toMenu(); const a = ARCS[i]; SAVE.seenArc[i] = 1; save(); const boss = ROSTER[i * 10 + 9];
-  showMenu(`<div class="chapter"><small>CHAPTER ${i + 1}</small><h1>${a.name}</h1><p class="tw" id="tw"></p><p class="quote" style="opacity:.8">${boss.name}: “${boss.pre}”</p><br><button class="btn" id="mGo">CONTINUE</button></div>`, { mGo: () => showArc(i) });
+  showMenu(`<div class="chapter"><img class="cface big" src="portraits/coach_${i % 2 ? 'think' : 'talk'}.webp"><small>CHAPTER ${i + 1}${i >= 5 ? ' · PART 2 REMATCH' : ''}</small><h1>${a.name}</h1><p class="tw" id="tw"></p><p class="quote" style="opacity:.8"><img class="qface" src="${boss.look.portrait}">${boss.name}: “${boss.pre}”</p><br><button class="btn" id="mGo">CONTINUE</button></div>`, { mGo: () => showArc(i) });
   const el = $('tw'); let k = 0; const iv = setInterval(() => { if (!el.isConnected) return clearInterval(iv); el.textContent = a.intro.slice(0, ++k); if (k >= a.intro.length) clearInterval(iv); }, 18);
 }
 function showArc(i) {
   toMenu(); const a = ARCS[i], list = ROSTER.slice(i * 10, i * 10 + 10);
   const cards = list.map(f => { const open = f.id <= SAVE.prog, st = SAVE.stars[f.id] || 0;
-    return `<div class="card fc ${open ? '' : 'locked'} ${f.boss ? 'boss' : ''}" id="ft${f.id}"><div class="av2" style="background:${open ? avBg(f) : '#333'}">${open ? f.look.emoji : '?'}</div><b>${open ? f.name : '???'}</b><small>${open ? f.archetype : ''}${f.boss ? ' · BOSS' : ''}</small><div class="stars">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div>`; }).join('');
+    return `<div class="card fc ${open ? '' : 'locked'} ${f.boss ? 'boss' : ''}" id="ft${f.id}"><div class="av2" style="background:${open ? avBg(f) : '#333'}">${open ? pimg(f) : '?'}</div><b>${open ? f.name : '???'}</b><small>${open ? f.archetype : ''}${f.boss ? ' · BOSS' : ''}</small><div class="stars">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</div></div>`; }).join('');
   const h = { mBack: showStory, mCh: () => showChapter(i) }; list.forEach(f => { if (f.id <= SAVE.prog) h['ft' + f.id] = () => showPreFight(f); });
   showMenu(`${coinBar()}<h1 style="font-size:30px">CH.${i + 1} ${a.name}</h1><div class="ladder small">${cards}</div><br><button class="btn sec" id="mBack">BACK</button><button class="btn sec" id="mCh">REPLAY CUTSCENE</button>`, h);
 }
 function statBars(f) { const s = f.stats, row = (n, v, m) => `<div class="sr"><span>${n}</span><i style="width:${clamp(v / m, 0.05, 1) * 100}%"></i></div>`; return row('HP', s.hp, 450) + row('POW', s.power, 1.7) + row('SPD', s.speed, 2) + row('DEF', s.defense, 0.6) + row('STA', s.stamina, 150); }
 function showPreFight(f) {
-  showMenu(`<div class="vs"><div class="vsl"><div class="av2 xl" style="background:#c22">🩺</div><b>ANGRY DOC</b><small>${PLAYER.nick}</small></div><div class="vsx">VS</div>
-   <div class="vsl"><div class="av2 xl" style="background:${avBg(f)}">${f.look.emoji}</div><b>${f.name}</b><small>"${f.nick}"</small></div></div>
-   <p class="intro">${f.intro}</p><p class="quote">“${f.pre}”</p>
+  showMenu(`<div class="vs"><div class="vsl"><div class="av2 xl" style="background:#c22">${pimg(PLAYER)}</div><b>${PLAYER.name}</b><small>${PLAYER.nick}</small></div><div class="vsx">VS</div>
+   <div class="vsl"><div class="av2 xl" style="background:${avBg(f)}">${pimg(f)}</div><b>${f.name}</b><small>"${f.nick}"</small></div></div>
+   <p class="intro">${f.intro}</p><p class="quote"><img class="qface" src="${f.look.portrait}">“${f.pre}”</p>
    <div class="info"><div>${statBars(f)}</div><div class="cmb"><b>${f.archetype.toUpperCase()}</b> · Lv ${f.level}<br>Combos: ${f.combos.join(', ')}<br>Rage: <span style="color:${hex(f.look.sig)}">${f.rage}</span></div></div>
    <button class="btn" id="mF">FIGHT!</button><button class="btn sec" id="mB">BACK</button>`, { mF: () => startFight(f), mB: () => showArc(f.arc) });
 }
 function showGallery() {
   toMenu();
   const cards = ROSTER.map(f => f.id <= SAVE.prog
-    ? `<div class="card gc ${f.boss ? 'boss' : ''}"><div class="av2" style="background:${avBg(f)}">${f.look.emoji}</div><b>#${f.id + 1} ${f.name}</b><small>"${f.nick}"<br>${f.archetype} · Lv ${f.level}${f.look.gear ? ' · ' + f.look.gear + ' gear' : ''}</small>${statBars(f)}<small class="cm">${f.combos.join(' / ')}<br>Rage: ${f.rage}</small></div>`
+    ? `<div class="card gc ${f.boss ? 'boss' : ''}"><div class="av2" style="background:${avBg(f)}">${pimg(f)}</div><b>#${f.id + 1} ${f.name}${f.rematch ? ' II' : ''}</b><small>"${f.nick}"<br>${f.archetype} · Lv ${f.level}${f.rematch ? ' · REMATCH' : ''}${f.look.gear ? ' · ' + f.look.gear + ' gear' : ''}</small>${statBars(f)}<small class="cm">${f.combos.join(' / ')}<br>Rage: ${f.rage}</small></div>`
     : `<div class="card gc locked"><div class="av2" style="background:#222">?</div><b>#${f.id + 1} ???</b><small>${ARCS[f.arc].name}</small></div>`).join('');
   showMenu(`<h1 style="font-size:32px">FIGHTERS</h1><h2>${Math.min(SAVE.prog + 1, 100)}/100 unlocked</h2><div class="ladder gal">${cards}</div><br><button class="btn sec" id="mBack">BACK</button>`, { mBack: showTitle });
 }
@@ -702,7 +776,7 @@ function showResult(win, how, coins) {
   if (next) h.mNext = () => (arcDone ? showChapter(next.arc) : showPreFight(next));
   showMenu(`<h1>${win ? 'YOU WIN!' : 'YOU LOSE'}</h1><h2>${how}</h2><p class="quote">${cur.name}: “${win ? cur.post : 'Go back to your clinic, Doc!'}”</p>
    <p>Damage dealt: ${fmt(player.dealt * HPX)} · Punches landed: ${player.landed} · Damage taken: ${fmt(enemy.dealt * HPX)} · +${coins} 🪙</p>
-   ${arcDone ? `<p style="color:#ffd23f">🏆 CHAPTER ${cur.arc + 1} COMPLETE! ${cur.arc === 9 ? 'YOU ARE THE WORLD UNDERGROUND CHAMPION!' : ''}</p>` : ''}<br>
+   ${arcDone ? `<p style="color:#ffd23f">🏆 CHAPTER ${cur.arc + 1} COMPLETE! ${cur.arc === 9 ? 'YOU ARE THE UNDISPUTED UNDERGROUND CHAMPION!' : cur.arc === 4 ? 'PART 1 CLEARED — REMATCHES UNLOCKED!' : ''}</p>` : ''}<br>
    ${next ? `<button class="btn" id="mNext">${arcDone ? 'NEXT CHAPTER' : 'NEXT FIGHT'}</button>` : ''}<button class="btn ${next ? 'sec' : ''}" id="mAgain">REMATCH</button><button class="btn sec" id="mLad">CHAPTER</button>`, h);
 }
 
@@ -738,6 +812,7 @@ function loop() {
   let dt = Math.min(clock.getDelta(), 0.05); fpsAcc += dt; fpsN++; if (fpsAcc > 1) { window.__fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
   if (paused || state === 'loading') { renderer.render(scene, camera); return; }
   time += dt; if (hitstop > 0) { hitstop -= dt; dt *= 0.15; }
+  if (tut && TUT[tut.i] && TUT[tut.i].slow && enemy && enemy.action && enemy.t < enemy.action.p.w) dt *= 0.45;
   crowdHype = Math.max(0, crowdHype - dt * 0.8);
   for (const s of crowd) s.position.y = s.userData.y + Math.abs(Math.sin(time * s.userData.sp * (0.5 + crowdHype * 0.6) + s.userData.p)) * (0.05 + crowdHype * 0.2);
   updateParts(dt);
@@ -745,7 +820,7 @@ function loop() {
     demo.forEach(d => d.update(dt, time)); idleA += dt * 0.15; camera.position.set(Math.sin(idleA) * 3.6, 2.5, Math.cos(idleA) * 3.6); camera.lookAt(0, 1.6, -0.2); camera.fov = baseFov; camera.updateProjectionMatrix();
   } else if (player && enemy) {
     if (state === 'fight') {
-      timer -= dt; if (timer <= 0) { timer = 0; endRound(); }
+      if (!tut) { timer -= dt; if (timer <= 0) { timer = 0; endRound(); } }
       player.blocking = (blockHeld || keys['s'] || keys['arrowdown']) && !player.action && player.stun <= 0 && player.dodge === 0;
       stepAction(player, dt, resolvePlayerHit);
       if (state === 'fight') { updateAI(dt); stepAction(enemy, dt * (enemy.speedDown > 0 ? 0.7 : 1), resolveEnemyHit); }
@@ -762,12 +837,100 @@ function loop() {
   if (window.__dbgCam) { const d = window.__dbgCam; camera.position.set(...d.p); camera.lookAt(...d.t); camera.fov = d.fov || 40; camera.updateProjectionMatrix(); }
   renderer.render(scene, camera);
 }
-window.__game = { get state() { return state; }, start: i => startFight(ROSTER[i]), get player() { return player; }, get enemy() { return enemy; }, roster: ROSTER, save: SAVE, endRound: () => { timer = 0.01; }, rage: () => { enemy.hyper = 100; }, showGallery, showStory };
+window.__game = { startTutorial, get tut() { return tut; }, tutAdvance, get state() { return state; }, start: i => startFight(ROSTER[i]), get player() { return player; }, get enemy() { return enemy; }, roster: ROSTER, save: SAVE, endRound: () => { timer = 0.01; }, rage: () => { enemy.hyper = 100; }, showGallery, showStory, showPreFight, ROSTER };
+
+// ---------- TUTORIAL (Chapter 0, Coach Angry Doc) ----------
+const COACH_IMG = n => `portraits/coach_${n}.webp`;
+const HERO_IMG = n => `portraits/hero_${n}.webp`;
+const COACH = { id: -1, arc: 0, fight: 0, level: 1, name: 'Coach Angry Doc', label: 'Coach', nick: 'Your Coach & PT', archetype: 'tank', combos: ['One-Two'], rage: "Doctor's Orders", boss: false, pre: 'Tutok! Fists up!', post: 'Pasado ka na!', intro: '',
+  look: { build: 'normal', height: 1.0, skin: 0xd8a27a, hair: 'buzz', hairColor: 0x111111, top: 'jacket', topColor: 0x151515, shorts: 0x151515, glove: 0xffd600, acc: ['cap_yellow', 'glasses', 'towel', 'stopwatch'], sig: 0xffd600, portrait: COACH_IMG('neutral'), boots: true, bootBand: 0xffd600 },
+  stats: { hp: 400, power: 0.12, speed: 0.8, defense: 0, stamina: 100 } };
+const TUT = [
+  { id: 'jab', face: 'talk', need: 3, hand: 'tap', spot: 'center', coach: 'Tutok, Kid! Tap ka lang kahit saan para mag-jab. Tatlo. Parang nagta-tap ng reflex hammer.', hint: 'TAP anywhere to JAB — do 3', key: 'J' },
+  { id: 'hook', face: 'talk', need: 2, hand: 'swipeL', spot: 'center', coach: 'Hooks naman! Swipe pakaliwa, tapos pakanan. Full range of motion, ha!', hint: 'SWIPE ← for a left hook, then SWIPE → for a right hook', key: 'K, then L' },
+  { id: 'upper', face: 'shout', need: 1, hand: 'swipeU', spot: 'center', coach: 'Uppercut! Swipe pataas, parang inaabot mo yung kisame ng clinic!', hint: 'SWIPE ↑ for an UPPERCUT', key: 'I' },
+  { id: 'block', face: 'neutral', need: 3, spot: 'bBlock', coach: 'Susuntok ako. HAWAKAN mo yung shield. Hold lang, hindi ito Zumba.', hint: 'HOLD the 🛡 button to BLOCK 3 punches', key: 'hold S' },
+  { id: 'dodge', face: 'think', need: 2, spot: 'arrows', slow: true, coach: 'Pag nag-ORANGE yung glove ko, iwas agad! Slow-mo muna para sa\'yo, bes.', hint: 'When the glove flashes ORANGE, tap ◀ or ▶ to DODGE — do 2', key: 'A / D' },
+  { id: 'counter', face: 'shout', need: 1, spot: 'center', coach: 'Ngayon, COUNTER! Suntukin mo ako HABANG nag-o-orange pa. Mas masakit yan... sa akin.', hint: 'Punch DURING the orange wind-up for a COUNTER HIT', key: 'J during the flash' },
+  { id: 'stamina', face: 'think', need: 1, spot: 'pSt', info: true, coach: 'Dilaw na bar = stamina. Spam ka nang spam, ubos ka! Parang hamstring na walang stretching.', hint: 'Mash punches to drain STAMINA, then rest until it refills (or tap NEXT)', key: 'mash J, then wait' },
+  { id: 'hyper', face: 'shout', need: 1, spot: 'bHyper', coach: 'Puno na HYPER mo! Pindutin mo, tapos tap para i-fast-forward. SHOWTIME!', hint: 'Tap HYPER to unleash your special — tap the screen to fast-forward', key: 'SPACE' },
+  { id: 'break', face: 'talk', need: 1, spot: 'none', info: true, coach: 'Pag Break Time: RECOVER HP para gumaling, HYPER MAX para puno agad ang special. May bayad, hindi PhilHealth \'to.', hint: 'Between rounds, spend coins on RECOVER HP & CURE INJURY or HYPER MAX', key: '' },
+];
+let tut = null;
+const tutEl = $('tut');
+function startTutorial() { SAVE.tutOffered = 1; save(); tut = { i: 0, n: 0, cd: 1.5, stMin: 100 }; startFight(COACH); renderTut(); }
+function renderTut() {
+  if (!tut) return; const s = TUT[tut.i]; tutEl.classList.remove('hidden');
+  const keyLine = !IS_MOBILE && s.key ? `<div class="tkey">⌨ Keys: <b>${s.key}</b></div>` : '';
+  tutEl.innerHTML = `<div class="tpanel"><img class="tface" src="${COACH_IMG(s.face)}"><div class="ttext"><div class="tname">COACH ANGRY DOC <span class="tstep">Step ${tut.i + 1}/${TUT.length}${s.need > 1 ? ` · ${tut.n}/${s.need}` : ''}</span></div><div class="tline">“${s.coach}”</div><div class="thint">${s.hint}</div>${keyLine}</div>
+    <div class="tbtns">${s.info ? '<button class="btn mini" id="tNext">NEXT ▶</button>' : ''}<button class="btn mini sec" id="tSkip">SKIP</button></div></div>
+    ${s.id === 'break' ? `<div class="tbreak"><img src="${COACH_IMG('neutral')}"><div><button class="btn bb" disabled>⚡ HYPER MAX<br><small>60 🪙</small></button><button class="btn bb" disabled>✚ RECOVER HP & CURE INJURY<br><small>90 🪙</small></button></div></div>` : ''}
+    <div id="tSpots"></div>${s.hand ? `<div class="thand ${s.hand}">👆</div>` : ''}`;
+  $('tSkip').onclick = () => finishTutorial(false);
+  if ($('tNext')) $('tNext').onclick = () => tutAdvance();
+  placeSpots();
+}
+function placeSpots() {
+  if (!tut) return; const s = TUT[tut.i], box = $('tSpots'); if (!box) return; box.innerHTML = '';
+  const rects = [];
+  if (s.spot === 'center') rects.push({ left: innerWidth * 0.3, top: innerHeight * 0.32, width: innerWidth * 0.4, height: innerHeight * 0.4, round: '24px' });
+  else if (s.spot === 'arrows') ['bL', 'bR'].forEach(id => rects.push($(id).getBoundingClientRect()));
+  else if (s.spot === 'pSt') rects.push($('pSt').parentElement.getBoundingClientRect());
+  else if (s.spot !== 'none') rects.push($(s.spot).getBoundingClientRect());
+  for (const r of rects) { const d = document.createElement('div'); d.className = 'tspot'; const pad = 10; Object.assign(d.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px', borderRadius: r.round || '50%' }); box.appendChild(d); }
+}
+addEventListener('resize', placeSpots);
+function tutAdvance() {
+  if (!tut) return; tut.i++; tut.n = 0; tut.cd = 1.2; tut.stMin = 100; enemy.action = null; comboQ = [];
+  Audio.tone(880, 1320, 0.15, 0.15, 'triangle'); callout('NICE!', 'g', 0.4);
+  if (tut.i >= TUT.length) return finishTutorial(true);
+  if (TUT[tut.i].id === 'hyper') player.hyper = 100;
+  if (TUT[tut.i].id === 'stamina') player.st = 100;
+  renderTut();
+}
+function tutProgress() { const s = TUT[tut.i]; tut.n++; if (tut.n >= s.need) setTimeout(tutAdvance, 500); else renderTut(); }
+function tutEvent(ev, type, counter) {
+  if (!tut || tut.n >= TUT[tut.i].need) return; const id = TUT[tut.i].id;
+  if (ev === 'hit') {
+    if (id === 'jab' && type === 'jab') tutProgress();
+    else if (id === 'hook' && ((tut.n === 0 && type === 'hookL') || (tut.n === 1 && type === 'hookR'))) { tutProgress(); if (tut.n === 1) { const h = tutEl.querySelector('.thand'); if (h) h.className = 'thand swipeR'; } }
+    else if (id === 'upper' && type === 'upper') tutProgress();
+    else if (id === 'counter' && counter) tutProgress();
+  } else if (ev === 'block' && id === 'block') tutProgress();
+  else if (ev === 'dodge' && id === 'dodge') tutProgress();
+  else if (ev === 'cine' && id === 'hyper') tutProgress();
+  else if (ev === 'hurt' && (id === 'block' || id === 'dodge')) callout(id === 'block' ? 'HOLD 🛡!' : 'DODGE ◀ ▶!', 'y', 0.6);
+}
+function tutAI(dt) {
+  const e = enemy, s = TUT[tut.i]; e.blocking = false; e.retreat = 0;
+  if (s.id === 'stamina') { tut.stMin = Math.min(tut.stMin, player.st); if (tut.stMin < 35 && player.st > 95 && tut.n === 0) { tut.n = 1; setTimeout(tutAdvance, 300); } }
+  if (e.action || !['block', 'dodge', 'counter'].includes(s.id)) return;
+  tut.cd -= dt; if (tut.cd > 0) return;
+  tut.cd = s.id === 'counter' ? 1.6 : 1.3;
+  enemyAttack(s.id === 'dodge' ? (Math.random() < 0.5 ? 'hookL' : 'hookR') : 'jab');
+  e.action.p.w = s.id === 'block' ? 0.7 : s.id === 'dodge' ? 0.9 : 1.3; e.action.p.d = 3;
+}
+function finishTutorial(done) {
+  if (!tut) return; tut = null; tutEl.classList.add('hidden'); tutEl.innerHTML = ''; state = 'menu'; $('hud').classList.add('hidden');
+  let coins = 0; if (done && !SAVE.tutDone) { coins = 150; SAVE.coins += coins; } if (done) SAVE.tutDone = 1; SAVE.tutOffered = 1; save();
+  if (!done) return showTitle();
+  toMenu();
+  showMenu(`<div class="chapter"><img class="cface big" src="${COACH_IMG('shout')}"><small>TUTORIAL COMPLETE</small><h1>PASADO KA, KID!</h1><p class="quote">“Pasado! Mas magaling ka pa sa pasyente kong ayaw mag-home exercise.”</p>${coins ? `<p style="color:#ffd23f">+${coins} 🪙 reward</p>` : ''}<br><button class="btn" id="mGo">START STORY</button><button class="btn sec" id="mT">TITLE</button></div>`, { mGo: showStory, mT: showTitle });
+}
+function showCheat(back) {
+  const k = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
+  showMenu(`<h1 style="font-size:34px">CONTROLS</h1><table class="cheat"><tr><th>Move</th><th>Touch</th><th>Keys</th></tr>
+   <tr><td>Jab</td><td>Tap anywhere</td><td>J</td></tr><tr><td>Left / Right hook</td><td>Swipe ← / →</td><td>K / L</td></tr><tr><td>Uppercut (breaks guard)</td><td>Swipe ↑</td><td>I</td></tr>
+   <tr><td>Block</td><td>Hold 🛡</td><td>Hold S</td></tr><tr><td>Dodge</td><td>◀ / ▶</td><td>A / D</td></tr><tr><td>Counter</td><td>Hit during the ORANGE glow</td><td>any punch</td></tr>
+   <tr><td>Hyper special</td><td>HYPER button (left)</td><td>Space</td></tr><tr><td>Fast-forward cinematic</td><td>Tap screen</td><td>Space</td></tr><tr><td>Pause / Mute</td><td>❚❚ / 🔊</td><td>P / M</td></tr></table>
+   <p>Stamina drains as you punch — under 20% you're weak and slow. Rest to refill.</p><br><button class="btn" id="mBk">BACK</button>`, { mBk: back });
+}
+
 loop();
 loader.load('models/boxer.glb', g => {
   BASE = g.scene; g.animations.forEach(a => CLIPS[a.name] = a);
   for (const n in CLIPS) CLIPS[n].tracks = CLIPS[n].tracks.filter(t => !/\.scale$/.test(t.name) && (n === 'Death01' || !/(root|hips)\.position/.test(t.name)));
   BASE.updateMatrixWorld(true); let ua = null; BASE.traverse(o => { if (/upper_arm\.?L$/.test(o.name)) ua = o; });
   RIG_S = 1.66 / ua.getWorldPosition(V()).y;
-  $('loading').remove(); state = 'menu'; showTitle();
+  $('loading').remove(); state = 'menu'; if (!SAVE.tutDone && !SAVE.tutOffered) { toMenu(); offerTutorial(); } else showTitle();
 }, ev => { if (ev.total) $('loading').textContent = 'Loading fighters… ' + Math.round(ev.loaded / ev.total * 100) + '%'; }, err => { $('loading').textContent = 'Failed to load model: ' + (err.message || err); console.error(err); });

@@ -7,3 +7,6 @@
 | All outfits, hair, faces, gloves, gear, arena, crowd, UI, fighters/story text, SFX | Original, made procedurally in code for this project | Project-owned |
 
 Model was converted from glTF to a meshopt-compressed GLB with unused animations stripped (`tools_convert.mjs`, @gltf-transform). Sound is synthesized live with WebAudio (no audio files). No Boxing Star assets, names or art are used.
+
+## Character art (v4)
+Hero (Kid Kamao), the 50 opponent portraits and Coach Angry Doc face crops come from the art sheets the owner provided (ref/hero_sheet.png, ref/opponents_sheet.png, ref/coach_sheet.png). They are used as portraits and as the design reference for the 3D looks.
