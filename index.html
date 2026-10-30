@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>Angry Doc: Underground Knockout</title><link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script></head><body>
+<div id="cineBg"></div><canvas id="c"></canvas>
+<div id="fx"></div>
+<div id="hud" class="hidden">
+ <div class="panel left"><div class="av" id="pAv"></div><div class="bars"><div class="nm"><span class="flag" id="pFlag"></span><b id="pName"></b></div>
+  <div class="hp"><i id="pHp"></i><s id="pHpLag"></s><b class="hpn" id="pHpN"></b></div><div class="st"><i id="pSt"></i><em id="pStT"></em></div><div class="debuff" id="pDeb"></div></div>
+  <div class="ring" id="pHyRing"><span>HYPER</span></div></div>
+ <div class="mid"><div id="roundT">ROUND 1</div><div id="timer">60</div><button id="pauseBtn">❚❚</button></div>
+ <div class="panel right"><div class="ring" id="eHyRing"><span>RAGE</span></div><div class="bars"><div class="nm"><b id="eName"></b><span class="flag" id="eFlag"></span></div>
+  <div class="hp"><i id="eHp"></i><s id="eHpLag"></s><b class="hpn" id="eHpN"></b></div><div class="st"><i id="eSt"></i><em id="eStT"></em></div><div class="debuff" id="eDeb"></div></div><div class="av" id="eAv"></div></div>
+ <button class="cb arrow" id="bL">◀</button><button class="cb arrow" id="bR">▶</button>
+ <button class="cb" id="bBlock">🛡</button><button class="cb" id="bHyper">HYPER</button>
+ <div id="hint">TAP = Jab · SWIPE ← → = Hook · SWIPE ↑ = Uppercut</div>
+ <div id="banner"></div>
+</div>
+<div id="menu" class="screen"></div><div id="break" class="hidden"></div><div id="cine" class="hidden"></div><div id="loading">Loading fighters…</div>
+<div id="rotate">↻ Rotate your phone to landscape</div>
+<button id="muteBtn">🔊</button>
+<script type="module" src="game.js"></script></body></html>
